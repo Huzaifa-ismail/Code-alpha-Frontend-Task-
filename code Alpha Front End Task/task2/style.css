@@ -1,0 +1,175 @@
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* prevent accidental selection while clicking */
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Inter', 'Poppins', system-ui, -apple-system, 'Roboto', sans-serif;
+            padding: 1.5rem;
+        }
+
+        /* main calculator container with glassmorphism + shadow */
+        .calculator {
+            max-width: 480px;
+            width: 100%;
+            background: rgba(22, 32, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 3rem;
+            padding: 1.8rem;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+            transition: all 0.2s ease;
+        }
+
+        /* display screen area */
+        .display-section {
+            background: #0e1a22;
+            border-radius: 2rem;
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: inset 0 5px 10px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(255, 255, 255, 0.05);
+        }
+
+        .expression {
+            font-size: 1.2rem;
+            color: #8aaec0;
+            text-align: right;
+            min-height: 1.8rem;
+            letter-spacing: 0.5px;
+            word-wrap: break-word;
+            word-break: break-all;
+            font-weight: 400;
+        }
+
+        .result {
+            font-size: 2.8rem;
+            font-weight: 700;
+            text-align: right;
+            color: #f0f9ff;
+            letter-spacing: 2px;
+            word-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.2;
+            transition: all 0.1s;
+            font-family: 'Courier New', 'Fira Code', monospace;
+        }
+
+        /* button grid */
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.85rem;
+        }
+
+        /* universal button styles */
+        .btn {
+            background: #1e2e3c;
+            border: none;
+            padding: 1.1rem 0;
+            font-size: 1.6rem;
+            font-weight: 600;
+            border-radius: 1.8rem;
+            color: #eef4ff;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            box-shadow: 0 5px 0 #0f171f;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #0f171f;
+        }
+
+        /* operator buttons ( +, -, ×, ÷, = ) */
+        .operator {
+            background: #2c4c6c;
+            color: white;
+            box-shadow: 0 5px 0 #1a334a;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        /* special action buttons: clear, delete, equals */
+        .special {
+            background: #3a5a78;
+            color: #fff3cf;
+        }
+
+        .equals {
+            background: #e67e22;
+            box-shadow: 0 5px 0 #b45f1b;
+            color: white;
+            font-size: 1.8rem;
+        }
+
+        .equals:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #b45f1b;
+        }
+
+        /* clear button distinct style */
+        .clear-btn {
+            background: #8b3c2c;
+            box-shadow: 0 5px 0 #5e2a1e;
+            color: #ffe1d6;
+        }
+
+        /* zero span for better look (optional) */
+        .btn-zero {
+            grid-column: span 1;
+        }
+
+        /* hover enhancement for desktop */
+        @media (hover: hover) {
+            .btn:hover {
+                filter: brightness(1.08);
+                transform: translateY(-2px);
+                box-shadow: 0 7px 0 #0f171f;
+            }
+            .btn:active:hover {
+                transform: translateY(3px);
+                box-shadow: 0 2px 0 #0f171f;
+            }
+            .equals:hover {
+                background: #f39c12;
+            }
+        }
+
+        /* responsive small screens */
+        @media (max-width: 480px) {
+            .calculator {
+                padding: 1rem;
+            }
+            .btn {
+                padding: 0.9rem 0;
+                font-size: 1.4rem;
+                border-radius: 1.6rem;
+            }
+            .result {
+                font-size: 2rem;
+            }
+            .expression {
+                font-size: 0.9rem;
+            }
+            .button-grid {
+                gap: 0.6rem;
+            }
+        }
+
+        /* subtle extra styling */
+        .footer-note {
+            text-align: center;
+            margin-top: 1.2rem;
+            font-size: 0.7rem;
+            color: #5c7f92;
+        }

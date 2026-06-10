@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Luminous Gallery | Interactive Image Gallery</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="gallery-container">
+    <div class="gallery-header">
+        <h1>✨ Luminous Gallery</h1>
+        <p>hover • filter • explore • lightbox</p>
+    </div>
+
+    <!-- category filter bar (bonus feature) -->
+    <div class="filter-bar" id="filterBar">
+        <button class="filter-btn active" data-category="all">🌿 All</button>
+        <button class="filter-btn" data-category="nature">🏔️ Nature</button>
+        <button class="filter-btn" data-category="urban">🌆 Urban</button>
+        <button class="filter-btn" data-category="abstract">🎨 Abstract</button>
+        <button class="filter-btn" data-category="portrait">🧑 Portrait</button>
+    </div>
+
+    <!-- dynamic gallery grid injected by JS (but we predefine structure) -->
+    <div class="gallery-grid" id="galleryGrid"></div>
+    <div class="gallery-footer">
+        📸 click any image for lightbox |  ◀  ▶  navigation inside lightbox
+    </div>
+</div>
+
+<!-- lightbox modal structure -->
+<div id="lightboxModal" class="lightbox">
+    <button class="close-lightbox" id="closeLightboxBtn">✕</button>
+    <button class="nav-btn prev-btn" id="lightboxPrev">‹</button>
+    <div class="lightbox-content">
+        <img class="lightbox-img" id="lightboxImage" alt="enlarged view">
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+    </div>
+    <button class="nav-btn next-btn" id="lightboxNext">›</button>
+</div>
+
+<script>
+    // ---------- IMAGE DATASET (high-quality placeholders + reliable categories + titles) ----------
+    const galleryData = [
+        { id: 1, title: "Misty Highlands", category: "nature", image: "https://picsum.photos/id/104/500/400", alt: "scenic nature highlands" },
+        { id: 2, title: "City Lights Echo", category: "urban", image: "https://picsum.photos/id/1/500/400", alt: "urban night city" },
+        { id: 3, title: "Chromatic Dreams", category: "abstract", image: "https://picsum.photos/id/20/500/400", alt: "abstract art coffee" },
+        { id: 4, title: "Ethereal Forest", category: "nature", image: "https://picsum.photos/id/96/500/400", alt: "nature forest creek" },
+        { id: 5, title: "Metropolis Pulse", category: "urban", image: "https://picsum.photos/id/21/500/400", alt: "urban architecture" },
+        { id: 6, title: "Watercolor Soul", category: "abstract", image: "https://picsum.photos/id/30/500/400", alt: "abstract creative" },
+        { id: 7, title: "Silent Portrait", category: "portrait", image: "https://picsum.photos/id/64/500/400", alt: "portrait model" },
+        { id: 8, title: "Vivid Jungle", category: "nature", image: "https://picsum.photos/id/127/500/400", alt: "nature tropical leaves" },
+        { id: 9, title: "Brick & Neon", category: "urban", image: "https://picsum.photos/id/3/500/400", alt: "urban street" },
+        { id: 10, title: "Fluid Motion", category: "abstract", image: "https://picsum.photos/id/111/500/400", alt: "abstract blur ink" },
+        { id: 11, title: "Graceful Gaze", category: "portrait", image: "https://picsum.photos/id/65/500/400", alt: "portrait woman" },
+        { id: 12, title: "Alpine Solitude", category: "nature", image: "https://picsum.photos/id/29/500/400", alt: "mountain nature" }
+    ];
+
+    // references
+    const galleryGrid = document.getElementById('galleryGrid');
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const lightboxModal = document.getElementById('lightboxModal');
+    const lightboxImg = document.getElementById('lightboxImage');
+    const lightboxCaption = document.getElementById('lightboxCaption');
+    const closeLightboxBtn = document.getElementById('closeLightboxBtn');
+    const prevBtn = document.getElementById('lightboxPrev');
+    const nextBtn = document.getElementById('lightboxNext');
+
+    // state
+    let currentFilter = 'all';          // active category
+    let currentImagesList = [];          // array of image objects after filtering (ordered)
+    let currentLightboxIndex = 0;        // index inside currentImagesList
+
+    // ----- helper: render gallery based on currentFilter -----
+    function renderGallery() {
+        // filter data according to category
+        let filtered = [];
+        if (currentFilter === 'all') {
+            filtered = [...galleryData];
+        } else {
+            filtered = galleryData.filter(item => item.category === currentFilter);
+        }
+        currentImagesList = filtered;     // store for lightbox navigation (only visible images)
+
+        if (filtered.length === 0) {
+            galleryGrid.innerHTML = `<div class="no-results">✨ No images in "${currentFilter}" category. Try another filter! ✨</div>`;
+            return;
+        }
+
+        // build gallery HTML with hover effects, smooth transitions, data attributes for lightbox
+        let html = '';
+        filtered.forEach((item, idx) => {
+            html += `
+                <div class="gallery-item" data-id="${item.id}" data-category="${item.category}" data-index="${idx}">
+                    <div class="image-wrapper">
+                        <img class="gallery-img" src="${item.image}" alt="${item.alt}" loading="lazy">
+                    </div>
+                    <div class="img-info">
+                        <div class="img-title">${escapeHtml(item.title)}</div>
+                        <div class="img-category">${item.category.charAt(0).toUpperCase() + item.category.slice(1)}</div>
+                    </div>
+                </div>
+            `;
+        });
+        galleryGrid.innerHTML = html;
+
+        // attach click event listeners for each gallery item (lightbox open)
+        const items = document.querySelectorAll('.gallery-item');
+        items.forEach((item, idx) => {
+            // dataset index corresponds to filtered array order
+            const actualIdx = idx;
+            item.addEventListener('click', (e) => {
+                // prevent if clicking on nested elements but it's fine
+                e.stopPropagation();
+                openLightboxByIndex(actualIdx);
+            });
+        });
+    }
+
+    // small utility to avoid XSS
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // open lightbox with specific index from currentImagesList
+    function openLightboxByIndex(index) {
+        if (!currentImagesList.length) return;
+        if (index < 0) index = 0;
+        if (index >= currentImagesList.length) index = currentImagesList.length - 1;
+        currentLightboxIndex = index;
+        const imageObj = currentImagesList[currentLightboxIndex];
+        if (imageObj) {
+            lightboxImg.src = imageObj.image;
+            lightboxCaption.innerText = `${imageObj.title}  •  ${imageObj.category.charAt(0).toUpperCase() + imageObj.category.slice(1)}`;
+            lightboxModal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // prevent scroll behind modal
+        }
+    }
+
+    // next/prev logic
+    function nextImage() {
+        if (currentImagesList.length === 0) return;
+        let newIndex = currentLightboxIndex + 1;
+        if (newIndex >= currentImagesList.length) newIndex = 0;   // loop
+        openLightboxByIndex(newIndex);
+    }
+
+    function prevImage() {
+        if (currentImagesList.length === 0) return;
+        let newIndex = currentLightboxIndex - 1;
+        if (newIndex < 0) newIndex = currentImagesList.length - 1;
+        openLightboxByIndex(newIndex);
+    }
+
+    // close lightbox
+    function closeLightbox() {
+        lightboxModal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // keyboard accessibility for lightbox
+    function handleKeyDown(e) {
+        if (!lightboxModal.classList.contains('active')) return;
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            nextImage();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            prevImage();
+        } else if (e.key === 'Escape') {
+            closeLightbox();
+        }
+    }
+
+    // ------ category filter logic + active button state + smooth transitions ------
+    function setActiveFilter(category) {
+        currentFilter = category;
+        // update active class on buttons
+        filterButtons.forEach(btn => {
+            const btnCat = btn.getAttribute('data-category');
+            if (btnCat === category) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        // optional: add crossfade transition effect before rendering (just re-render)
+        galleryGrid.style.opacity = '0.7';
+        setTimeout(() => {
+            renderGallery();
+            galleryGrid.style.opacity = '1';
+        }, 80);
+        // but to keep smooth, directly call but add micro transition
+        // actually we call renderGallery and ensure transition
+        renderGallery();
+        // make grid fade in again
+        galleryGrid.style.transition = 'opacity 0.2s';
+        galleryGrid.style.opacity = '1';
+    }
+
+    // ------ init event listeners ------
+    function initEventListeners() {
+        // filter buttons
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const category = btn.getAttribute('data-category');
+                if (category === currentFilter) return;
+                setActiveFilter(category);
+            });
+        });
+
+        // lightbox controls
+        closeLightboxBtn.addEventListener('click', closeLightbox);
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            prevImage();
+        });
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            nextImage();
+        });
+
+        // close lightbox when clicking on modal background (but not on content)
+        lightboxModal.addEventListener('click', (e) => {
+            if (e.target === lightboxModal) {
+                closeLightbox();
+            }
+        });
+
+        globalThis.addEventListener('keydown', handleKeyDown);
+    }
+
+    // additional style for lightbox image smooth hover and transition
+    // ensures that gallery item hover animations remain smooth
+
+    // bonus: add loading placeholder effect? fine, also we include categories fully functional.
+
+    // initial render and setup
+    function init() {
+        renderGallery();     // initial with 'all' category
+        initEventListeners();
+        // store in currentImagesList for navigation coherence
+        // lightbox navigation uses currentImagesList which gets updated on filter changes.
+        // when filter changes, we set currentImagesList inside renderGallery, perfect.
+        // also ensure if lightbox is open and filter changes? We close lightbox to avoid state mismatch.
+        // But for better UX: when filter changes while lightbox active, we close it automatically.
+        const originalSetActive = setActiveFilter;
+        window.setActiveFilter = setActiveFilter; // not needed but adding safety
+        // override setActiveFilter to close lightbox if opened
+        const superSetActive = setActiveFilter;
+        window.setActiveFilter = function(cat) {
+            if (lightboxModal.classList.contains('active')) {
+                closeLightbox();
+            }
+            superSetActive(cat);
+        };
+        // rebind filter buttons to use updated function
+        filterButtons.forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', (e) => {
+                const category = newBtn.getAttribute('data-category');
+                if (category === currentFilter) return;
+                if (lightboxModal.classList.contains('active')) closeLightbox();
+                setActiveFilter(category);
+            });
+        });
+        // re-select all filter btns reference
+        const freshButtons = document.querySelectorAll('.filter-btn');
+        // update active class after binding
+        setActiveFilter('all'); // but we keep state synced
+        // additional safety: reset currentImagesList on first load
+        currentImagesList = [...galleryData];
+        // small tweak: re-apply lightbox open from dynamic elements via delegation - already handled per item.
+    }
+
+    // override global setActiveFilter to include lightbox close, without breaking
+    const originalSetActiveBinding = setActiveFilter;
+    const enhancedSetActive = (category) => {
+        if (lightboxModal.classList.contains('active')) closeLightbox();
+        originalSetActiveBinding(category);
+    };
+    window.setActiveFilter = enhancedSetActive;
+    // replace filter buttons listening again after init patches
+    // final init:
+    init();
+
+    // for safety, after dynamic renderGallery we also re-bind close on lightbox? no, listeners bound globally.
+    // Final touch: add responsive & cross-browser, and all hover/filter + lightbox navigation loops works
+    // Also we guarantee 'next/prev' buttons inside lightbox will reflect current filtered set.
+    // Ensure the gallery item mapping using index respects filtered list after category change.
+    // Because openLightboxByIndex uses currentImagesList (filtered) and picks correct item.
+    // Perfect.
+    // Ensure no duplicate event listeners: init runs once.
+    // Also add manual 'resize' smooth fix
+    window.addEventListener('resize', () => {
+        // no action needed, lightbox responsive via CSS.
+    });
+</script>
+</body>
+</html>
